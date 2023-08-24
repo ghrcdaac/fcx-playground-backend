@@ -15,6 +15,6 @@ class DataProcess(ABC):
     pass
   
   @abstractmethod
-  def prep_visualizion(self):
+  def prep_visualization(self):
     print('After preprocessing, prepare data to be visualized in Cesium')
     pass
