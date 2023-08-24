@@ -2,7 +2,7 @@ import numpy as np
 import json
 
 from copy import deepcopy
-from czml_model import model, czml_head
+from .czml_model import model, czml_head
 
 class NavCzmlWriter:
     """

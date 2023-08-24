@@ -1,12 +1,11 @@
 from abc import abstractmethod
-from typing import string, Array
 import numpy as np
 
-from data_process import DataProcess
+from .data_process import DataProcess
 
 class CZMLDataProcess(DataProcess):
   @abstractmethod
-  def ingest(self, url: string) -> Array[np.array]:
+  def ingest(self, url: str) -> np.array:
     print("get czml data from data source. Data source may be any of http or ftp")
     # czml data can be in any file format. eg. txt, nc, uf etc.
     # use appropriate library to read the file and return the data as numpy arrays
