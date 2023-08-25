@@ -28,7 +28,14 @@ class NavCZMLDataProcess(CZMLDataProcess):
     return integrated_data
 
   def prep_visualization(self, data: pd.DataFrame) -> str:
-    nav_czml_writer = NavCzmlWriter(data["length"], data["time_window"], data["time_steps"], data["longitude"], data["latitude"], data["altitude"], data["roll"], data["pitch"], data["heading"])
+   
+    length = self.length
+    time_window = self.time_window
+    time_steps = data["time_steps"]
+        
+    nav_czml_writer = NavCzmlWriter(length, time_window, time_steps, data["longitude"], data["latitude"], data["altitude"], data["roll"], data["pitch"], data["heading"])
+    # nav_czml_writer = NavCzmlWriter(length)
+    # nav_czml_writer._set_with_df(data)
     nav_czml_str = nav_czml_writer.get_czml_string()
     return nav_czml_str
 
@@ -67,10 +74,6 @@ class NavCZMLDataProcess(CZMLDataProcess):
     
     # apply masks
     time = time[mask].astype('datetime64[s]')
-    time_window = time[[0, -1]].astype(np.string_)
-    time_window = np.core.defchararray.add(time_window, np.string_('Z'))
-    
-    f_time_window = np.core.defchararray.decode(time_window, 'UTF-8') # calculate it during prep viz
     f_time_steps = (time - time[0]).astype(int).tolist()[::5]
     f_latitude = latitude[mask][::5]
     f_longitude = longitude[mask][::5]
@@ -78,9 +81,13 @@ class NavCZMLDataProcess(CZMLDataProcess):
     f_heading = heading[mask][::5]
     f_pitch = pitch[mask][::5]
     f_roll = roll[mask][::5]
-    # f_length = mask[mask][::5].size
-    
-    # print("f_length", (f_length))
+
+    # needed for viz process, seperate from pdDataframe, so added to instance variable
+    f_length = mask[mask][::5].size    
+    time_window = time[[0, -1]].astype(np.string_)
+    f_time_window = np.core.defchararray.add(time_window, np.string_('Z'))
+    self.length = f_length
+    self.time_window = f_time_window
     
     filtered_data = pd.DataFrame(data = {"time_steps": f_time_steps, "latitude": f_latitude, "longitude": f_longitude, "altitude": f_altitude, "heading": f_heading, "pitch": f_pitch, "roll": f_roll})
     return filtered_data
