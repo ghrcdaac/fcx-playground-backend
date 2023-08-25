@@ -35,10 +35,11 @@ class NavCZMLDataProcess(CZMLDataProcess):
 
   # data preprocessing steps
 
-  def _cleaning(self, data: np.array) -> np.array:
+  def _cleaning(self, data: np.array) -> pd.DataFrame:
     col_index_map = self._get_col_index_map()
     data = deepcopy(data)
 
+    # data extraction
     # scrape necessary data columns 
     time = data[:, col_index_map["time"]]
     latitude = data[:, col_index_map["latitude"]]
@@ -69,7 +70,7 @@ class NavCZMLDataProcess(CZMLDataProcess):
     time_window = time[[0, -1]].astype(np.string_)
     time_window = np.core.defchararray.add(time_window, np.string_('Z'))
     
-    f_time_window = np.core.defchararray.decode(time_window, 'UTF-8')
+    f_time_window = np.core.defchararray.decode(time_window, 'UTF-8') # calculate it during prep viz
     f_time_steps = (time - time[0]).astype(int).tolist()[::5]
     f_latitude = latitude[mask][::5]
     f_longitude = longitude[mask][::5]
@@ -77,17 +78,20 @@ class NavCZMLDataProcess(CZMLDataProcess):
     f_heading = heading[mask][::5]
     f_pitch = pitch[mask][::5]
     f_roll = roll[mask][::5]
-    f_length = mask[mask][::5].size
+    # f_length = mask[mask][::5].size
     
-    return np.hstack((f_time_window, f_time_steps, f_latitude, f_longitude, f_altitude, f_heading, f_pitch, f_roll, f_length))
+    # print("f_length", (f_length))
+    
+    filtered_data = pd.DataFrame(data = {"time_steps": f_time_steps, "latitude": f_latitude, "longitude": f_longitude, "altitude": f_altitude, "heading": f_heading, "pitch": f_pitch, "roll": f_roll})
+    return filtered_data
   
-  def _transformation(self, data: np.array) -> np.array:
+  def _transformation(self, data: pd.DataFrame) -> pd.DataFrame:
     #  no transformation needed
     return data
   
-  def _integration(self, data: np.array) -> pd.DataFrame:
-    # use data and create a dataframe
-    return pd.DataFrame(data=data, columns= ["time_window", "time_steps", "latitude", "longitude", "altitude", "heading", "pitch", "roll", "length"])
+  def _integration(self, data: pd.DataFrame) -> pd.DataFrame:
+    # no integration needed
+    return data
 
   # utils
 
