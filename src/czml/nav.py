@@ -72,8 +72,8 @@ class NavCZMLDataProcess(CZMLDataProcess):
     unique[unique_idx] = True
     mask = np.logical_and(mask, unique)
     
-    # apply masks
-    time = time[mask].astype('datetime64[s]')
+    # apply masks and sample data
+    time = time[mask].astype('datetime64[s]') #unsampled
     f_time_steps = (time - time[0]).astype(int).tolist()[::5]
     f_latitude = latitude[mask][::5]
     f_longitude = longitude[mask][::5]
@@ -83,13 +83,14 @@ class NavCZMLDataProcess(CZMLDataProcess):
     f_roll = roll[mask][::5]
 
     # needed for viz process, seperate from pdDataframe, so added to instance variable
-    f_length = mask[mask][::5].size    
+    # f_length = mask[mask][::5].size # only take filtered/masked data, then sample every 5th element.
+    f_length = len(f_time_steps) # or simply just use this. same as above
     time_window = time[[0, -1]].astype(np.string_) # get first and last element
     f_time_window = np.core.defchararray.add(time_window, np.string_('Z')) # add Z to each time window element to make it ISO format
     f_time_window = np.core.defchararray.decode(f_time_window, 'UTF-8') # decode to UTF-8 from byte_ object
     self.length = f_length
     self.time_window = f_time_window
-    
+
     filtered_data = pd.DataFrame(data = {"time_steps": f_time_steps, "latitude": f_latitude, "longitude": f_longitude, "altitude": f_altitude, "heading": f_heading, "pitch": f_pitch, "roll": f_roll})
     return filtered_data
   
