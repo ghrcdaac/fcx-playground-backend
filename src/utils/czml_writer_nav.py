@@ -64,9 +64,8 @@ class NavCzmlWriter:
         self._set_orientation(df['roll'], df['pitch'], df['heading'])
 
     def _set_time(self, time_window, time_steps):
-        epoch = time_window[0]
-        end = time_window[1]
-        self.model['availability'] = "{}/{}".format(epoch, end)
+        [epoch, end] = time_window
+        self.model['availability'] = f"{epoch}/{end}"
         self.model['position']['epoch'] = epoch
         self.model['position']['cartographicDegrees'][0::4] = time_steps
         self.model['properties']['roll']['epoch'] = epoch
