@@ -112,6 +112,7 @@ class NavCZMLDataProcess(CZMLDataProcess):
     return [bucket_name, objectKey]
   
   def _get_col_index_map(self):
+    # represents the column number for each key, inside the input csv type file.
     return {
         "time": 1,
         "latitude": 2,
