@@ -30,7 +30,7 @@ class NavCZMLDataProcess(CZMLDataProcess):
   def prep_visualization(self, data: pd.DataFrame) -> str:
    
     length = self.length
-    time_window = self.time_window
+    time_window = self.time_window.tostring().decode('utf-8')
     time_steps = data["time_steps"]
         
     nav_czml_writer = NavCzmlWriter(length, time_window, time_steps, data["longitude"], data["latitude"], data["altitude"], data["roll"], data["pitch"], data["heading"])

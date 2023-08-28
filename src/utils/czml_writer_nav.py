@@ -47,6 +47,7 @@ class NavCzmlWriter:
     def __init__(self, length, time_window, time_steps, longitude, latitude, altitude, roll, pitch, heading):
     # def __init__(self, length):
         self.model = deepcopy(model)
+        self.czml_head = deepcopy(czml_head)
         self.length = length
         self.model['position']['cartographicDegrees'] = [0] * 4 * length
         self.model['properties']['roll']['number'] = [0] * 2 * length
@@ -93,4 +94,4 @@ class NavCzmlWriter:
         return time_window, time_steps
 
     def get_czml_string(self):
-        return json.dumps([czml_head, model])
+        return json.dumps([self.czml_head, self.model])
