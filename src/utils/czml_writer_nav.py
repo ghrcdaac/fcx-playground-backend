@@ -44,7 +44,7 @@ class NavCzmlWriter:
         get_czml_string():
             Returns the CZML data as a JSON string.
     """
-    def __init__(self, length, time_window, time_steps, longitude, latitude, altitude, roll, pitch, heading):
+    def __init__(self, length):
     # def __init__(self, length):
         self.model = deepcopy(model)
         self.czml_head = deepcopy(czml_head)
@@ -53,12 +53,8 @@ class NavCzmlWriter:
         self.model['properties']['roll']['number'] = [0] * 2 * length
         self.model['properties']['pitch']['number'] = [0] * 2 * length
         self.model['properties']['heading']['number'] = [0] * 2 * length
-        
-        self._set_time(time_window, time_steps)
-        self._set_position(longitude, latitude, altitude)
-        self._set_orientation(roll, pitch, heading)
 
-    def _set_with_df(self, df):
+    def set_with_df(self, df):
         self._set_time(*self._get_time_info(df['timestamp']))
         self._set_position(df['longitude'], df['latitude'], df['altitude'])
         self._set_orientation(df['roll'], df['pitch'], df['heading'])
@@ -86,10 +82,11 @@ class NavCzmlWriter:
         self.model['properties']['heading']['number'][1::2] = heading
 
     def _get_time_info(self, time):
-        time_window = time[[0, -1]].astype(np.string_)
-        time_window = np.core.defchararray.add(time_window, np.string_('Z'))
-        time_window = np.core.defchararray.decode(time_window, 'UTF-8')
-        time_steps = (time - time[0]).astype(int)
+        time = time.values # pandas series to numpy ndarray
+        time_window = time[[0, -1]].astype(np.string_)  # get first and last element
+        time_window = np.core.defchararray.add(time_window, np.string_('Z')) # add Z to each time window element to make it ISO format
+        time_window = np.core.defchararray.decode(time_window, 'UTF-8') # decode to UTF-8 from byte_ object
+        time_steps = (time - time[0]).astype(int).tolist()
         return time_window, time_steps
 
     def get_czml_string(self):
