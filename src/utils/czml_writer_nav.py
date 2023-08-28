@@ -82,7 +82,7 @@ class NavCzmlWriter:
         self.model['properties']['heading']['number'][1::2] = heading
 
     def _get_time_info(self, time):
-        time = time.values # pandas series to numpy ndarray
+        time = time.values.astype('datetime64[s]') # pandas series to numpy ndarray
         time_window = time[[0, -1]].astype(np.string_)  # get first and last element
         time_window = np.core.defchararray.add(time_window, np.string_('Z')) # add Z to each time window element to make it ISO format
         time_window = np.core.defchararray.decode(time_window, 'UTF-8') # decode to UTF-8 from byte_ object
