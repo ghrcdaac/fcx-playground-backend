@@ -2,3 +2,7 @@
 boto3
 numpy
 pandas
+
+# for 3d tile pointcloud
+
+zarr
