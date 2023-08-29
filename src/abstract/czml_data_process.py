@@ -1,5 +1,6 @@
 from abc import abstractmethod
 import numpy as np
+import pandas as pd
 
 from .data_process import DataProcess
 
@@ -11,13 +12,13 @@ class CZMLDataProcess(DataProcess):
     # use appropriate library to read the file and return the data as numpy arrays
   
   @abstractmethod
-  def preprocess(self):
+  def preprocess(self) -> pd.DataFrame:
     print("preprocess czml data to be ready for vizualization")
     # pre process of czml can go through various stages like
     # cleaning: scrape the necessary data columns, 
     # integration: data from multiple sources can be integrated into intermediate format, e.g. numpy arrays. The intermeidate format should be compatible with viz prepration step
     
   @abstractmethod
-  def prep_visualization(self):
+  def prep_visualization(self) -> str:
     print("After preprocessing, prepare czml data to be visualized in Cesium using CZML writer")
     # czml writer a util class can be used to write czml data from numpy arrays as input
