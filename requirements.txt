@@ -1,0 +1,4 @@
+# for nav cmzl
+boto3
+numpy
+pandas
