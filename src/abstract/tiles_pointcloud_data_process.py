@@ -6,10 +6,10 @@ from .data_process import DataProcess
 
 class TilesPointCloudDataProcess(DataProcess):
   @abstractmethod
-  def ingest(self, url: str) -> np.array:
+  def ingest(self, url: str) -> pd.DataFrame:
     print("get raw data from data source. Data source may be any of http or ftp")
     # raw data can be in any file format. eg. txt, nc, uf etc.
-    # use appropriate library to read the file and return the data as numpy arrays
+    # use appropriate library to read the file and return the data as pandas dataframe
   
   @abstractmethod
   def preprocess(self):
