@@ -6,3 +6,4 @@ pandas
 # for 3d tile pointcloud
 
 zarr
+xarray
