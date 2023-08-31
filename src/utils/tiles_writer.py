@@ -6,7 +6,7 @@ from .tiles_point_cloud import PointCloud
 to_rad = np.pi / 180.0
 to_deg = 180.0 / np.pi
 
-def generate_point_cloud(variable, epoch, end, zarr_location, point_cloud_folder):
+def write_tiles(variable, epoch, end, zarr_location, point_cloud_folder):
     """Generates json pointcloud from a given zarr file input
 
     Args:

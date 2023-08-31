@@ -8,8 +8,8 @@ import zarr
 
 from typing import Generator
 
-
 from abstract.tiles_pointcloud_data_process import TilesPointCloudDataProcess
+from utils.tiles_writer import write_tiles
 
 class RadRangeTilesPointCloudDataProcess(TilesPointCloudDataProcess):
   def __init__(self):
@@ -37,15 +37,17 @@ class RadRangeTilesPointCloudDataProcess(TilesPointCloudDataProcess):
     data = self._generator_to_xr(file)
     return data
   
-  def preprocess(self, data: xr.Dataset) -> xr.Dataset:
+  def preprocess(self, data: xr.Dataset) -> str:
     cleaned_data = self._cleaning(data)
     transformed_data = self._transformation(cleaned_data)
     integrated_data = self._integration(transformed_data)
     self.OPENED_FILE_REF.close()
     return integrated_data
 
-  def prep_visualization(self, data: pd.DataFrame) -> str:
-    return data
+  def prep_visualization(self, zarr_data_path: str) -> str:
+    point_cloud_folder = zarr_data_path+"_point_cloud"
+    write_tiles("ref", 0, 1000000000000, zarr_data_path, point_cloud_folder)
+    return point_cloud_folder
 
   # data preprocessing steps
 
