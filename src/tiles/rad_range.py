@@ -1,8 +1,10 @@
+import os
+import shutil
 import boto3
-from copy import deepcopy
 import numpy as np
 import pandas as pd
 import xarray as xr
+import zarr
 
 from typing import Generator
 
@@ -11,10 +13,18 @@ from abstract.tiles_pointcloud_data_process import TilesPointCloudDataProcess
 
 class RadRangeTilesPointCloudDataProcess(TilesPointCloudDataProcess):
   def __init__(self):
-    self.url = ''
+    self.url = None
+    self.OPENED_FILE_REF = None
+
+    self.campaign = 'Olympex'
+    self.collection = "AirborneRadar"
+    self.dataset = "gpmValidationOlympexcrs"
+    self.variables = ["zku"]
+    self.renderers = ["point_cloud"]
+
+    self.chunk = 262144
     self.to_rad = np.pi / 180
     self.to_deg = 180 / np.pi
-    self.OPENED_FILE_REF = None
   
   def ingest(self, url: str) -> xr.Dataset:
     self.url = url
@@ -97,42 +107,8 @@ class RadRangeTilesPointCloudDataProcess(TilesPointCloudDataProcess):
     ref = ref[sort_idx]
     time = time[sort_idx]
 
-    print("time", len(time))
-    print("lon", len(lon))
-    print("lat", len(lat))
-    print("alt", len(alt))
-    print("ref", len(ref))
-    print("roll", len(roll))
-    print("pitch", len(pitch))
-    print("head", len(head))
-    print("rad_range", len(rad_range))
-
-    df = pd.DataFrame(data = {
-      'time': time,
-      'lon': lon,
-      'lat': lat,
-      'alt': alt,
-      'roll': roll,
-      'pitch': pitch,
-      'head': head,
-      'rad_range': rad_range,
-      'ref': ref
-    })
-    return df
-  
-  def _integration(self, data: pd.DataFrame) -> pd.DataFrame:
-    # data from multiple sources can be integrated into intermediate file format, e.g. zarr file. The intermeidate format should be compatible with viz prepration step
-    time = data['time']
-    ref = data['ref']
-    lon = data['lon']
-    lat = data['lat']
-    alt = data['alt']
-    roll = data['roll']
-    pitch = data['pitch']
-    head = data['head']
-    rad_range = data['rad_range']
-
     # remove nan and infinite using mask (dont use masks filtering for values used for curtain creation)
+
     mask = np.logical_and(np.isfinite(ref), alt > 0)
     time = time[mask]
     ref = ref[mask]
@@ -140,7 +116,66 @@ class RadRangeTilesPointCloudDataProcess(TilesPointCloudDataProcess):
     lat = lat[mask]
     alt = alt[mask]
 
-    return data
+
+    df = pd.DataFrame(data = {
+      'time': time,
+      'lon': lon,
+      'lat': lat,
+      'alt': alt,
+      'ref': ref
+    })
+
+    return df
+  
+  def _integration(self, data: pd.DataFrame) -> str:
+    # data from multiple sources can be integrated into intermediate file format, e.g. zarr file. The intermeidate format should be compatible with viz prepration step
+    time = data['time'].values
+    ref = data['ref'].values
+    lon = data['lon'].values
+    lat = data['lat'].values
+    alt = data['alt'].values
+
+    # path creation
+    zarr_path = self._create_zarr_dir()
+
+    # create a ZARR directory in the path provided
+    store = zarr.DirectoryStore(zarr_path)
+    root = zarr.group(store=store)
+
+    # Create empty rows for modified data inside zarr
+    z_chunk_id = root.create_dataset('chunk_id', shape=(0, 2), chunks=None, dtype=np.int64)
+    z_location = root.create_dataset('location', shape=(0, 3), chunks=(self.chunk, None), dtype=np.float32)
+    z_time = root.create_dataset('time', shape=(0), chunks=(self.chunk), dtype=np.int32)
+    z_vars = root.create_group('value')
+    z_ref = z_vars.create_dataset('ref', shape=(0), chunks=(self.chunk), dtype=np.float32)
+    n_time = np.array([], dtype=np.int64)
+
+    # Now populate (append) the empty rows in ZARR dir with preprocessed data
+    z_location.append(np.stack([lon, lat, alt], axis=-1))
+    z_ref.append(ref)
+    n_time = np.append(n_time, time)
+
+    idx = np.arange(0, n_time.size, self.chunk)
+    chunks = np.zeros(shape=(idx.size, 2), dtype=np.int64)
+    chunks[:, 0] = idx
+    chunks[:, 1] = n_time[idx]
+    z_chunk_id.append(chunks)
+
+    epoch = np.min(n_time)
+    n_time = (n_time - epoch).astype(np.int32)
+    z_time.append(n_time)
+
+    # save it.
+    root.attrs.put({
+        "campaign": self.campaign,
+        "collection": self.collection,
+        "dataset": self.dataset,
+        "variables": self.variables,
+        "renderers": self.renderers,
+        "epoch": int(epoch)
+    })
+
+    return zarr_path
 
   # utils
 
@@ -180,3 +215,13 @@ class RadRangeTilesPointCloudDataProcess(TilesPointCloudDataProcess):
     y = -np.sin(roll) * np.sin(head) + np.cos(roll) * np.sin(pitch) * np.cos(head)
     z = -np.cos(roll) * np.cos(pitch)
     return (x, y, z)
+
+  def _create_zarr_dir(self):
+    """Create a directory to hold zarr file
+    """
+    date = self._get_date_from_url(self.url)
+    tempdir = 'temp/' + str(date) + '/zarr'
+    if os.path.exists(tempdir):
+        shutil.rmtree(tempdir)
+    os.makedirs(tempdir)
+    return tempdir
