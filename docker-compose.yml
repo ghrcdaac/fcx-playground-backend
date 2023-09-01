@@ -1,0 +1,7 @@
+services:
+  fcxplayground:
+    build: ./
+    ports:
+      - "8888:8888"
+    volumes:
+    - $HOME/.aws/credentials:/home/jovyan/.aws/credentials
