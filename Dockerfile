@@ -1,6 +1,8 @@
 FROM jupyter/scipy-notebook
 
-WORKDIR $HOME/fcxplayground
+USER root
+
+WORKDIR /home/jovyan/fcxplayground
 
 COPY requirements.txt  .
 
