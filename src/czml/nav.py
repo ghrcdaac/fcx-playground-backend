@@ -11,15 +11,17 @@ class NavCZMLDataProcess(CZMLDataProcess):
   def __init__(self):    
     pass
   
-  def ingest(self, url: str) -> np.array:
-    s3_client = boto3.client('s3')
-    [bucket_name, objectKey] = self._get_s3_details(url)
-    s3_file = s3_client.get_object(Bucket=bucket_name, Key=objectKey)
+  def ingest(self, url: str, type: str = "local") -> np.array:
+    """Returns a numpy array representing the raw data file.
 
-    file = s3_file['Body'].iter_lines()
-    
-    data = self._generator_to_np(file)
-    return data
+    Keyword arguments:
+    url -- the path of the raw data file.
+    type -- either s3 or local (default local).
+    """
+    if (type == "s3"):
+      return self._ingest_from_s3(url)
+    else:
+      return self._ingest_from_local(url)
   
   def preprocess(self, data: np.array) -> pd.DataFrame:
     cleaned_data = self._cleaning(data)
@@ -87,6 +89,24 @@ class NavCZMLDataProcess(CZMLDataProcess):
   def _integration(self, data: pd.DataFrame) -> pd.DataFrame:
     # no integration needed
     return data
+
+
+  # ingestion variations
+
+  def _ingest_from_s3(self, url: str) -> np.array:
+    s3_client = boto3.client('s3')
+    [bucket_name, objectKey] = self._get_s3_details(url)
+    s3_file = s3_client.get_object(Bucket=bucket_name, Key=objectKey)
+
+    file = s3_file['Body'].iter_lines()
+
+    data = self._generator_to_np(file)
+    return data
+
+  def _ingest_from_local(self, path: str) -> np.array:
+    data = self._generator_to_np(path)
+    return data
+
 
   # utils
 
