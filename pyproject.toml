@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fcx_playground"
+version = "1.0.0"
+authors = [
+  { name="sanzog03", email="sanzog03@gmail.com" },
+]
+description = "A package that has a core fcx data processing module and a module to visualize the processed data in python interactive notebook environment (playground)."
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  "boto3",
+  "numpy",
+  "pandas",
+  "zarr",
+  "xarray",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/ghrcdaac/fcx-playground-backend"
+"Bug Tracker" = "https://github.com/ghrcdaac/fcx-playground-backend/issues"
