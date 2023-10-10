@@ -1,229 +1,143 @@
-import os
-import shutil
-import boto3
 import numpy as np
 import pandas as pd
-import xarray as xr
-import zarr
-
-from typing import Generator
+import glob
+import h5py
+from datetime import datetime
 
 from abstract.tiles_pointcloud_data_process import TilesPointCloudDataProcess
-from utils.tiles_writer import write_tiles
+from utils.tiles_writer import *
+from utils.tiles_point_cloud import *
 
 class RadRangeTilesPointCloudDataProcess(TilesPointCloudDataProcess):
   def __init__(self):
-    self.url = None
-    self.OPENED_FILE_REF = None
-
-    self.campaign = 'Olympex'
-    self.collection = "AirborneRadar"
-    self.dataset = "gpmValidationOlympexcrs"
-    self.variables = ["zku"]
-    self.renderers = ["point_cloud"]
-
-    self.chunk = 262144
-    self.to_rad = np.pi / 180
-    self.to_deg = 180 / np.pi
+    self.Bands = 'W'
+    self.Vars = ['dBZe','Vel']
+    self.fdate = '2020-02-27'
+    self.outDir0 = '/Users/Indhuja/Documents/IMPACTS_CRS/'
+    self.tInstr = {'2020-02-27':'T07:43:30Z'}
   
-  def ingest(self, url: str) -> xr.Dataset:
-    self.url = url
-    s3_client = boto3.client('s3')
-    [bucket_name, objectKey] = self._get_s3_details(url)
-    
-    s3_file = s3_client.get_object(Bucket=bucket_name, Key=objectKey)
-    file = s3_file['Body'].read()
-    
-    data = self._generator_to_xr(file)
-    return data
+  def ingest(self):
+    #replace this with the correct .h5 file path 
+    infile = glob.glob('../../IMPACTS_CRS_*.h5')[0]
+    return infile
   
-  def preprocess(self, data: xr.Dataset) -> str:
-    cleaned_data = self._cleaning(data)
-    transformed_data = self._transformation(cleaned_data)
-    integrated_data = self._integration(transformed_data)
-    self.OPENED_FILE_REF.close()
-    return integrated_data
+  def preprocess(self, infile):
+    cleaned_data, ncol, nrow, rad_range, data = self._cleaning(infile)
+    transformed_data = self._transformation(cleaned_data, ncol, nrow, rad_range)
+    integrated_data = self._integration(transformed_data, data)
+    return cleaned_data, transformed_data, integrated_data
 
-  def prep_visualization(self, zarr_data_path: str) -> str:
-    point_cloud_folder = zarr_data_path+"_point_cloud"
-    write_tiles("ref", 0, 1000000000000, zarr_data_path, point_cloud_folder)
-    return point_cloud_folder
+  def prep_visualization(self, RADs) -> str:  #RADs = integrated_data
+    for bandSel in self.Bands:
+        print('\n*Processing data for band:',bandSel)
+        
+        RAD = RADs[bandSel]
+
+        #----------Make pointcloud ----------
+        # Cesium use Epoch time (secs since 1970) for visualization
+        #        use seconds relative to the Epoch time within a module/tile
+        #-------------------------------
+
+        #----Set time, range, steps in pointcloud tileset
+        t1970 = datetime(1970,1,1)
+        t0 = datetime.strptime(self.fdate,"%Y-%m-%d")
+        tFlight = datetime.strptime(self.fdate + self.tInstr[self.fdate], "%Y-%m-%dT%H:%M:%SZ")
+
+        SecS = (tFlight - t1970).total_seconds()  #to be consistent with across all ER-2 measurements, 
+        #SecS = RAD['Time'].min()                   #use RAD['Time'].min() for stand-alone
+        SecE = RAD['Time'].max()
+        RAD['timeP'] = RAD['Time'] - SecS         #time is counted from SecS in visualization
+
+        lonw, lone = RAD['lon'].min()-0.2, RAD['lon'].max()+0.2
+        lats, latn = RAD['lat'].min()-0.2, RAD['lat'].max()+0.2
+        altb, altu = RAD['alt'].min(),RAD['alt'].max()
+        bigbox = [lonw, lats, lone, latn, altb, altu] #*to_rad
+
+        nPoints = len(RAD)
+        Tsize = 500000
+        nTile = nPoints//Tsize
+        print(nPoints, nTile)
+        if(nPoints%Tsize > 0): nTile += 1
+        print(' Valid data points:',nPoints)
+        for vname in self.Vars:
+            print(' -Making pointcloud tileset for',vname)
+            folder= self.outDir0+ '/'+bandSel+'_'+vname
+            mkfolder(folder)
+
+            tileset = Tileset(bandSel+'_'+vname, bigbox, SecS)
+
+            for tile in range (nTile):
+                if(tile ==0):
+                    epoch = SecS         #--epoch and end are seconds from (1970,1,1)
+                else:
+                    epoch =  RAD['Time'][tile*Tsize]   #SecS + tile*Tsize
+                end = RAD['Time'][min((tile+1)*Tsize, nPoints-1)]
+                #subset of rows whose time>epoch and time<end
+                subset = RAD[(RAD['Time'] >= epoch) & (RAD['Time'] < end)]
+                make_pcloudTile(vname, tile, tileset, subset, epoch, end, folder)
 
   # data preprocessing steps
 
-  def _cleaning(self, data: xr.Dataset) -> xr.Dataset:
-    # data extraction
-    # scrape necessary data columns 
-    extracted_data = data[['timed', 'zku', 'lat', 'lon', 'altitude', 'roll', 'pitch', 'head', 'range']]
-    return extracted_data
+  def _cleaning(self, Hfile):
+    with h5py.File(Hfile, 'r') as fh5:
+        nav = fh5['Navigation/Data']
+        Tepoch = fh5['Time/Data/TimeUTC'][()]
+        rad_range = fh5['Products/Information/Range'][()]
+        rad_range = rad_range.reshape(rad_range.size)
+        lat, lon, alt = nav['Latitude'][()], nav['Longitude'][()], nav['Height'][()]
+        roll, pitch, head = nav['Roll'][()], nav['Pitch'][()], nav['Heading'][()]
+        band = fh5['Products/Data']
+        data={'W':{'dBZe': band['dBZe'][()],
+                    'LDR': band['LDR'][()],
+                    'Vel': band['Velocity_corrected'][()],
+                    'spW': band['SpectrumWidth'][()]  } }
+        ncol = Tepoch.size
+        nrow = rad_range.size
+        df = pd.DataFrame(data = {
+            'time': Tepoch,
+            'lon': lon,
+            'lat': lat,
+            'alt': alt,
+            'roll': roll,
+            'pitch': pitch,
+            'head': head,
+        })
+    return df, ncol, nrow, rad_range, data
 
-  def _transformation(self, data: xr.Dataset) -> pd.DataFrame:
-    #  transform the data to a suitable data formatting
-    hour = data['timed'].values
-    lat = data['lat'].values
-    lon = data['lon'].values
-    alt = data['altitude'].values # altitude of aircraft in meters
-    roll = data["roll"].values
-    pitch = data["pitch"].values
-    head = data["head"].values
-    ref = data['zku'].values #CRS radar reflectivity #2d data
-    rad_range = data["range"].values # has lower count than ref
-    
-    # time correction and conversion:
-    base_time = self._get_date_from_url(self.url)
-    hour = self._add24hr(hour)
-    delta = (hour * 3600).astype('timedelta64[s]') + base_time
-    time = (delta - np.datetime64('1970-01-01')).astype('timedelta64[s]').astype(np.int64)
+  def _transformation(self, data, ncol, nrow, rad_range) -> pd.DataFrame:
+    #---Track data
+    RAD0 = pd.DataFrame()
+    RAD0['Time'] = np.repeat(data['time'], nrow) # Use Epoch time (seconds since 1970)
+    RAD0['Lon'] = np.repeat(data['lon'], nrow)
+    RAD0['Lat'] = np.repeat(data['lat'], nrow)
+    RAD0['Alt'] = np.repeat(data['alt'], nrow)
+    RAD0['roll'] = np.repeat(data['roll'] * to_rad, nrow)
+    RAD0['pitch'] = np.repeat(data['pitch'] * to_rad, nrow)
+    RAD0['head'] = np.repeat(data['head'] * to_rad, nrow)
+    RAD0['Zdist'] = np.tile(rad_range, ncol)
 
-    # transform ref to 1d array and repeat other columns to match data dimension
+    RAD0['lon'], RAD0['lat'], RAD0['alt'] = proj_LatLonAlt(RAD0)
 
-    num_col = ref.shape[0] # number of cols
-    num_row = ref.shape[1] # number of rows
-
-    time = np.repeat(time, num_row)
-    lon = np.repeat(lon, num_row)
-    lat = np.repeat(lat, num_row)
-    alt = np.repeat(alt, num_row)
-    roll = np.repeat(roll * self.to_rad, num_row)
-    pitch = np.repeat(pitch * self.to_rad, num_row)
-    head = np.repeat(head * self.to_rad, num_row)
-    rad_range = np.tile(rad_range, num_col)
-    ref = ref.flatten()
-
-    # curtain creation
-
-    x, y, z = self._down_vector(roll, pitch, head)
-    x = np.multiply(x, np.divide(rad_range, 111000 * np.cos(lat * self.to_rad)))
-    y = np.multiply(y, np.divide(rad_range, 111000))
-    z = np.multiply(z, rad_range)
-    lon = np.add(-x, lon)
-    lat = np.add(-y, lat)
-    alt = np.add(z, alt)
-
-    # sort by time
-
-    sort_idx = np.argsort(time)
-    lon = lon[sort_idx]
-    lat = lat[sort_idx]
-    alt = alt[sort_idx]
-    ref = ref[sort_idx]
-    time = time[sort_idx]
-
-    # remove nan and infinite using mask (dont use masks filtering for values used for curtain creation)
-
-    mask = np.logical_and(np.isfinite(ref), alt > 0)
-    time = time[mask]
-    ref = ref[mask]
-    lon = lon[mask]
-    lat = lat[mask]
-    alt = alt[mask]
-
-
-    df = pd.DataFrame(data = {
-      'time': time,
-      'lon': lon,
-      'lat': lat,
-      'alt': alt,
-      'ref': ref
-    })
-
-    return df
+    RAD0 = RAD0.drop(['roll','pitch','head','Zdist','Lon','Lat','Alt'], axis=1 )
+                  
+    return RAD0
   
-  def _integration(self, data: pd.DataFrame) -> str:
-    # data from multiple sources can be integrated into intermediate file format, e.g. zarr file. The intermeidate format should be compatible with viz prepration step
-    time = data['time'].values
-    ref = data['ref'].values
-    lon = data['lon'].values
-    lat = data['lat'].values
-    alt = data['alt'].values
+  def _integration(self, RAD0, data) -> str:
+    #---Product data
+    RADs={}
+    bandSel = 'W'
+    Vars = ['dBZe','Vel']
+    print('\n*Processing data for band:',bandSel)
 
-    # path creation
-    zarr_path = self._create_zarr_dir()
+    RAD = RAD0.copy()
+    for vname in Vars: RAD[vname] = data[bandSel][vname].flatten()
 
-    # create a ZARR directory in the path provided
-    store = zarr.DirectoryStore(zarr_path)
-    root = zarr.group(store=store)
-
-    # Create empty rows for modified data inside zarr
-    z_chunk_id = root.create_dataset('chunk_id', shape=(0, 2), chunks=None, dtype=np.int64)
-    z_location = root.create_dataset('location', shape=(0, 3), chunks=(self.chunk, None), dtype=np.float32)
-    z_time = root.create_dataset('time', shape=(0), chunks=(self.chunk), dtype=np.int32)
-    z_vars = root.create_group('value')
-    z_ref = z_vars.create_dataset('ref', shape=(0), chunks=(self.chunk), dtype=np.float32)
-    n_time = np.array([], dtype=np.int64)
-
-    # Now populate (append) the empty rows in ZARR dir with preprocessed data
-    z_location.append(np.stack([lon, lat, alt], axis=-1))
-    z_ref.append(ref)
-    n_time = np.append(n_time, time)
-
-    idx = np.arange(0, n_time.size, self.chunk)
-    chunks = np.zeros(shape=(idx.size, 2), dtype=np.int64)
-    chunks[:, 0] = idx
-    chunks[:, 1] = n_time[idx]
-    z_chunk_id.append(chunks)
-
-    epoch = np.min(n_time)
-    n_time = (n_time - epoch).astype(np.int32)
-    z_time.append(n_time)
-
-    # save it.
-    root.attrs.put({
-        "campaign": self.campaign,
-        "collection": self.collection,
-        "dataset": self.dataset,
-        "variables": self.variables,
-        "renderers": self.renderers,
-        "epoch": int(epoch)
-    })
-
-    return zarr_path
-
-  # utils
-
-  def _get_s3_details(self, url) -> list:
-    url = url.replace("s3://", "")
-    temp_url = url.split("/")
-    bucket_name = temp_url[0]
-    
-    temp_url = url.split(bucket_name+"/")
-    objectKey = temp_url[1]  # key should not start with /
-    return [bucket_name, objectKey]
-  
-  def _generator_to_xr(self, infile: Generator) -> xr.Dataset:
-    # As the data in netcdf format, to put it inside numpy array, we need to read it first.
-    ds = xr.open_dataset(infile, decode_cf=False) # dont close opened dataset just yet
-    self.OPENED_FILE_REF = ds # close later, after data preprocessing.
-    return ds
-  
-  def _add24hr(self, hour: np.ndarray) -> np.ndarray:
-    # time correction
-    # time in CRS for going over the next day in UTC
-    # so add 24 hours to the time to get the correct time"""
-    mask = np.where(hour < hour[0])
-    hour[mask] = hour[mask] + 24
-    return hour
-  
-  def _get_date_from_url(self, url: str) -> np.datetime64:
-    # get date from url
-    # date is in the format of YYYYMMDD
-    # eg. 20190801
-    date = url.split("olympex_CRS_")[1].split("_")[0]
-    np_date = np.datetime64('{}-{}-{}'.format(date[:4], date[4:6], date[6:]))
-    return np_date
-
-  def _down_vector(self, roll, pitch, head):
-    x = np.sin(roll) * np.cos(head) + np.cos(roll) * np.sin(pitch) * np.sin(head)
-    y = -np.sin(roll) * np.sin(head) + np.cos(roll) * np.sin(pitch) * np.cos(head)
-    z = -np.cos(roll) * np.cos(pitch)
-    return (x, y, z)
-
-  def _create_zarr_dir(self):
-    """Create a directory to hold zarr file
-    """
-    date = self._get_date_from_url(self.url)
-    tempdir = 'temp/' + str(date) + '/zarr'
-    if os.path.exists(tempdir):
-        shutil.rmtree(tempdir)
-    os.makedirs(tempdir)
-    return tempdir
+    #---initial clean up and processing
+    print(' Original data points:',len(RAD))
+    RAD.dropna(subset=Vars, how='all', inplace=True)
+    RAD = RAD.fillna(-999)
+    RAD = RAD[(RAD['alt'] >= 0) & (RAD['alt'] <= 18000)] #<--mid_lat winter storm (12000 would do)
+    RAD = RAD.reset_index(drop=True)
+    print(' In range data points:',len(RAD))
+    RADs[bandSel] = RAD      
+    return RADs

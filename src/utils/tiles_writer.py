@@ -1,73 +1,39 @@
 import os
-import zarr
 import numpy as np
-from .tiles_point_cloud import PointCloud
+from datetime import datetime
 
 to_rad = np.pi / 180.0
 to_deg = 180.0 / np.pi
 
-def write_tiles(variable, epoch, end, zarr_location, point_cloud_folder):
-    """Generates json pointcloud from a given zarr file input
+def down_vector(roll, pitch, head):
+    x = np.sin(roll) * np.cos(head) + np.cos(roll) * np.sin(pitch) * np.sin(head)
+    y = -np.sin(roll) * np.sin(head) + np.cos(roll) * np.sin(pitch) * np.cos(head)
+    z = -np.cos(roll) * np.cos(pitch)
+    return (x, y, z)
 
-    Args:
-        variable (_type_): _description_
-        epoch (_type_): _description_
-        end (_type_): _description_
-        zarr_location (string): source zarr file.
-        point_cloud_folder (string): destination folder for 3d tile json file.
-    """
+def proj_LatLonAlt(DF):
+    """Zdist is distance from Aircraft"""
+    
+    x, y, z = down_vector(DF['roll'], DF['pitch'], DF['head'])
+    x = np.multiply(x, np.divide(DF['Zdist'], 111000 * np.cos(DF['Lat'] * to_rad)))
+    y = np.multiply(y, np.divide(DF['Zdist'], 111000))
+    z = np.multiply(z, DF['Zdist'])
 
-    #out_key = f"{os.getenv('CRS_OUTPUT_FLIGHT_PATH')}/{shortname}"
-    #pc_out_key = f"{output_path}/point_cloud"
+    lon = np.add(-x, DF['Lon'])
+    lat = np.add(-y, DF['Lat'])
+    alt = np.add(z,  DF['Alt'])
+    return lon,lat,alt
 
-    '''
-    try:
-        os.mkdir(out_key)
-    except:
-        pass
-    '''
+def mkfolder(folder):
+    if(not os.path.exists(folder)): 
+        try:
+            os.makedirs(folder)
+            print('Success to create folder %s' % folder)    
+        except OSError:
+            print('Failed to create folder %s' % folder)
+            quit()
+    else:
+        print('%s already exists' % folder)
 
-    try:
-        os.mkdir(point_cloud_folder)
-    except:
-        pass
-
-    # LOAD THE DATA.
-    store = zarr.DirectoryStore(zarr_location)
-    root = zarr.group(store=store)
-
-    chunk_id = root["chunk_id"][:]
-    num_chunks = chunk_id.shape[0]
-    id = np.argmax(chunk_id[:, 1] > epoch) - 1
-    start_id = chunk_id[0 if id < 0 else id, 0]
-    id = num_chunks - np.argmax(chunk_id[::-1, 1] < end)
-    end_id = chunk_id[id, 0] if id < num_chunks else root["time"].size - 1
-
-    root_epoch = root.attrs["epoch"]
-    location = root["location"][start_id:end_id]
-    lon = location[:, 0]
-    lat = location[:, 1]
-    alt = location[:, 2]
-    value = root["value"][variable][start_id:end_id]
-    time = root["time"][start_id:end_id]
-
-    # filter data using mask
-    epoch = epoch - root_epoch # date-time
-    end = end - root_epoch
-    mask = np.logical_and(time >= epoch, time <= end)
-    lon = lon[mask]
-    lat = lat[mask]
-    alt = alt[mask]
-    value = value[mask]
-    time = time[mask]
-
-    # Generate Pointcloud Tileset
-    point_cloud = PointCloud(point_cloud_folder, lon, lat, alt, value, time, root_epoch)
-
-    for tile in range(int(np.ceil(time.size / 530000))):
-        start_id = tile * 530000
-        end_id = np.min([start_id + 530000, time.size])
-        point_cloud.schedule_task(tile, start_id, end_id)
-
-    point_cloud.start()
-    point_cloud.join()
+def sec2Z(t): 
+    return "{}Z".format(datetime.utcfromtimestamp(t).isoformat())

@@ -4,7 +4,7 @@ USER root
 
 WORKDIR /home/jovyan/fcxplayground
 
-COPY requirements.txt  .
+COPY requirements.txt .
 
 RUN conda install conda-libmamba-solver \
     && conda config --set solver libmamba \

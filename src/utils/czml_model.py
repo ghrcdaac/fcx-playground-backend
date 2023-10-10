@@ -2,13 +2,12 @@
 
 model = {
     "id": "Flight Track",
-    "name": "ER2",
+    "name": "P3",
     "availability": "{}/{}",
     "model": {
-        "gltf": "https://s3.amazonaws.com/visage-czml/iphex_HIWRAP/img/er2.gltf",
-        "scale": 100.0,
-        "minimumPixelSize": 32,
-        "maximumScale": 150.0
+        "gltf":"https://fcx-czml.s3.amazonaws.com/img/p3.gltf",
+        "scale": 1.0,
+        "maximumScale": 1000.0
     },
     "position": {
         "cartographicDegrees": []
@@ -35,4 +34,20 @@ czml_head = {
     "id": "document",
     "name": "wall czml",
     "version": "1.0"
+}
+
+TrackColor = {'P3B': [0, 255, 128, 255],
+              'ER2': [0, 255, 255, 128]}
+
+modelP3B = {
+        "gltf":"https://fcx-czml.s3.amazonaws.com/img/p3.gltf",
+        "scale": 5.0,
+        "maximumScale": 1000.0
+}
+
+modelER2 = {
+    "gltf":"https://fcx-czml.s3.amazonaws.com/img/er2.gltf",
+    "scale": 900.0,
+    "minimumPixelSize": 500,
+    "maximumScale": 1000.0
 }
