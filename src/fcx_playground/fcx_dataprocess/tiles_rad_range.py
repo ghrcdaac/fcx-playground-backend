@@ -183,6 +183,7 @@ class RadRangeTilesPointCloudDataProcess(TilesPointCloudDataProcess):
   # ingesting variations
 
   def _ingest_from_local(self, path: str) -> xr.Dataset:
+    self.url = path
     data = self._generator_to_xr(path)
     return data
 

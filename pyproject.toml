@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fcx_playground"
-version = "1.0.0"
+version = "1.0.2"
 authors = [
   { name="sanzog03", email="sanzog03@gmail.com" },
 ]
