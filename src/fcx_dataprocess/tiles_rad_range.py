@@ -8,8 +8,8 @@ import zarr
 
 from typing import Generator
 
-from abstract.tiles_pointcloud_data_process import TilesPointCloudDataProcess
-from utils.tiles_writer import write_tiles
+from .abstract.tiles_pointcloud_data_process import TilesPointCloudDataProcess
+from .utils.tiles_writer import write_tiles
 
 class RadRangeTilesPointCloudDataProcess(TilesPointCloudDataProcess):
   def __init__(self):

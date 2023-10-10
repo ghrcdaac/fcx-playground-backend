@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 from typing import Generator
 
-from abstract.czml_data_process import CZMLDataProcess
-from utils.czml_writer_nav import NavCzmlWriter
+from .abstract.czml_data_process import CZMLDataProcess
+from .utils.czml_writer_nav import NavCzmlWriter
 
 class NavCZMLDataProcess(CZMLDataProcess):
   def __init__(self):    
