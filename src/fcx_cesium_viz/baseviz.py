@@ -23,12 +23,12 @@ class CesiumViz():
     """
 
   def add_script(self, url: str) -> str:
-    print('add script that creates cesium viewer and loads it with various kinds of data (czml, 3dtilesets, etc))')
+    # print('add script that creates cesium viewer and loads it with various kinds of data (czml, 3dtilesets, etc))')
     pass
 
   def generate_html(self, url: str) -> str:
-    print('Generate html file with cesium script and body')
+    # print('Generate html file with cesium script and body')
     script = self.add_script(url)
     html = self.formulate_body(script)
-    print("HTML generation complete.")
+    # print("HTML generation complete.")
     return html
