@@ -1,6 +1,6 @@
 class CesiumViz():
   def formulate_body(self, script: str) -> str:
-    print('Formaulate a predefined HTML BODY structure with the custom script')
+    # print('Formaulate a predefined HTML BODY structure with the custom script')
     return \
       f"""
           <!DOCTYPE html>

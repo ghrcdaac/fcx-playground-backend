@@ -2,7 +2,7 @@ from .baseviz import CesiumViz
 
 class CZMLViz(CesiumViz):
   def add_script(self, czml_path: str) -> str:
-    print('add script that creates cesium viewer and loads it with various kinds of data (czml, 3dtilesets, etc))')
+    # print('add script that creates cesium viewer and loads it with various kinds of data (czml, 3dtilesets, etc))')
     s1= \
       """
       Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhYTg3MTQxNS01ZTIwLTQ4MmItYjA5NS1hYWM3MWQ0OTNkYTMiLCJpZCI6MTA1ODMzLCJpYXQiOjE2NjE0MzkwOTB9.IWdoSi1zjC7fl7Ncj0YVJgXMfjX3K-RmRcGtjp2xryo";
