@@ -23,6 +23,6 @@ class TilesPointCloudDataProcess(DataProcess):
     
   @abstractmethod
   def prep_visualization(self):
-    print("After preprocessing, prepare tileset.json data to be visualized in Cesium using tileset writer")
+    # print("After preprocessing, prepare tileset.json data to be visualized in Cesium using tileset writer")
     # tileset writer a util class can be used to write tileset json data from zarr file as input
     pass
