@@ -1,4 +1,4 @@
-from .baseviz import CesiumViz
+from .base_viz import CesiumViz
 
 class TilesViz(CesiumViz):
   def add_script(self, tileset_path: str) -> str:

@@ -1,4 +1,4 @@
-from .baseviz import CesiumViz
+from .base_viz import CesiumViz
 
 class CZMLViz(CesiumViz):
   def add_script(self, czml_path: str) -> str:
