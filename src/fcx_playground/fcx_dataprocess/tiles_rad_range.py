@@ -8,8 +8,8 @@ import zarr
 
 from typing import Generator
 
-from abstract.tiles_pointcloud_data_process import TilesPointCloudDataProcess
-from utils.tiles_writer import write_tiles
+from .abstract.tiles_pointcloud_data_process import TilesPointCloudDataProcess
+from .utils.tiles_writer import write_tiles
 
 class RadRangeTilesPointCloudDataProcess(TilesPointCloudDataProcess):
   def __init__(self):
@@ -25,17 +25,18 @@ class RadRangeTilesPointCloudDataProcess(TilesPointCloudDataProcess):
     self.chunk = 262144
     self.to_rad = np.pi / 180
     self.to_deg = 180 / np.pi
-  
-  def ingest(self, url: str) -> xr.Dataset:
-    self.url = url
-    s3_client = boto3.client('s3')
-    [bucket_name, objectKey] = self._get_s3_details(url)
-    
-    s3_file = s3_client.get_object(Bucket=bucket_name, Key=objectKey)
-    file = s3_file['Body'].read()
-    
-    data = self._generator_to_xr(file)
-    return data
+
+  def ingest(self, url: str, type: str = "local") -> xr.Dataset:
+    """Returns a numpy array representing the raw data file.
+
+    Keyword arguments:
+    url -- the path of the raw data file.
+    type -- either s3 or local (default local).
+    """
+    if (type == "s3"):
+      return self._ingest_from_s3(url)
+    else:
+      return self._ingest_from_local(url)
   
   def preprocess(self, data: xr.Dataset) -> str:
     cleaned_data = self._cleaning(data)
@@ -178,6 +179,24 @@ class RadRangeTilesPointCloudDataProcess(TilesPointCloudDataProcess):
     })
 
     return zarr_path
+
+  # ingesting variations
+
+  def _ingest_from_local(self, path: str) -> xr.Dataset:
+    self.url = path
+    data = self._generator_to_xr(path)
+    return data
+
+  def _ingest_from_s3(self, url: str) -> xr.Dataset:
+    self.url = url
+    s3_client = boto3.client('s3')
+    [bucket_name, objectKey] = self._get_s3_details(url)
+
+    s3_file = s3_client.get_object(Bucket=bucket_name, Key=objectKey)
+    file = s3_file['Body'].read()
+
+    data = self._generator_to_xr(file)
+    return data
 
   # utils
 
