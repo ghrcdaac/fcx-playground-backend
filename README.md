@@ -4,7 +4,7 @@
 
 ### 1. Installation:
  ```
- pip install fcx_playground
+ pip install fcx-playground
  ```
 
 ### 2. Usage:
