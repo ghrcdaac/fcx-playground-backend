@@ -1,4 +1,59 @@
-# Steps to use data processing playground
+# Documentation
+
+## Steps to Use
+
+### 1. Installation:
+ ```
+ pip install fcx_playground
+ ```
+
+### 2. Usage:
+* To use data processing steps for NAV:
+```
+from fcx_playground.fcx_dataprocess.czml_nav import NavCZMLDataProcess
+obj = NavCZMLDataProcess()
+
+data = obj.ingest("<path_to_input>")
+pre_processed_data = obj.preprocess(data)
+czml_str = obj.prep_visualization(pre_processed_data)
+
+```
+
+* To use data processing steps for CRS rad-range:
+```
+from fcx_playground.fcx_dataprocess.tiles_rad_range import RadRangeTilesPointCloudDataProcess
+obj = RadRangeTilesPointCloudDataProcess()
+
+data = obj.ingest("<path_to_input>")
+pre_processed_data = obj.preprocess(data)
+point_clouds_tileset = obj.prep_visualization(pre_processed_data)
+
+```
+
+* To visualize NAV CZML:
+```
+from fcx_playground.fcx_cesium_viz.czml_viz import CZMLViz
+czml_viz_obj = CZMLViz()
+nav_czml_cesium_html = czml_viz_obj.generate_html("<path_to_saved_czml>")
+
+# use the nav_czml_cesium_html in IPython.display.HTML to render it.
+```
+
+* To visualize CRS rad-range 3DTiles:
+```
+from fcx_playground.fcx_cesium_viz.tiles_viz import TilesViz
+tileset_viz_obj = TilesViz()
+point_clouds_tileset_html = tileset_viz_obj.generate_html("<path_to_saved_point_clouds_tileset>")
+
+# use the point_clouds_tileset_html in IPython.display.HTML to render it.
+```
+
+### Note:
+`ingest`, `preprocess`, `prep_visualization` methods are inherited from `DataProcess` Abstract Class. \
+As per need, we can override or write custom methods for `ingest`, `preprocess`, `prep_visualization`, by maintaining consistency on the return type of the overrides.
+
+
+## Steps to use fcx playground from Source Code
 
 ## Pre-requisites
 
@@ -27,5 +82,5 @@
   - The concrete classes are implemented from abstract classes for detailed 3d visualization file generation processes.
   - There are utilities that help the visualization file generation.
 
-## NOTE:
+### Devloper guidelines:
   - Clear Notebook `outputs` before commiting any changes to git; for clean changes tracking.
