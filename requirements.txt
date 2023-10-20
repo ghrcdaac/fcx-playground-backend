@@ -7,3 +7,7 @@ pandas
 
 zarr
 xarray
+
+# for xarray backend to open nc files
+
+netCDF4
