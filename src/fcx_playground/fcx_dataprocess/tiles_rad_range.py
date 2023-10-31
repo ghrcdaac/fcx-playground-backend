@@ -78,17 +78,17 @@ class RadRangeTilesPointCloudDataProcess(TilesPointCloudDataProcess):
 
     # transform ref to 1d array and repeat other columns to match data dimension
 
-    num_col = ref.shape[0] # number of cols
-    num_row = ref.shape[1] # number of rows
+    num_rows = ref.shape[0] # number of rows
+    num_cols = ref.shape[1] # number of cols
 
-    time = np.repeat(time, num_row)
-    lon = np.repeat(lon, num_row)
-    lat = np.repeat(lat, num_row)
-    alt = np.repeat(alt, num_row)
-    roll = np.repeat(roll * self.to_rad, num_row)
-    pitch = np.repeat(pitch * self.to_rad, num_row)
-    head = np.repeat(head * self.to_rad, num_row)
-    rad_range = np.tile(rad_range, num_col)
+    time = np.repeat(time, num_cols)
+    lon = np.repeat(lon, num_cols)
+    lat = np.repeat(lat, num_cols)
+    alt = np.repeat(alt, num_cols)
+    roll = np.repeat(roll * self.to_rad, num_cols)
+    pitch = np.repeat(pitch * self.to_rad, num_cols)
+    head = np.repeat(head * self.to_rad, num_cols)
+    rad_range = np.tile(rad_range, num_rows)
     ref = ref.flatten()
 
     # curtain creation
